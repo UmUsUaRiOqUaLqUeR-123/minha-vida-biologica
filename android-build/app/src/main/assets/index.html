@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroTerrarium - Biosfera Cibernética Generativa</title>
+  <style>
+    :root {
+      --bg-deep: #05070c;
+      --bg-panel: rgba(9, 14, 24, 0.78);
+      --border-panel: rgba(64, 128, 255, 0.2);
+      --accent-cyan: #00f0ff;
+      --accent-magenta: #ff007b;
+      --accent-amber: #ffb703;
+      --accent-green: #00ffa3;
+      --text-main: #e2e8f0;
+      --text-dim: #64748b;
+      --font-mono: "SF Mono", "Fira Code", "Roboto Mono", monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+    }
+
+    #viewport {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: block;
+      cursor: crosshair;
+    }
+
+    /* Interface HUD sobreposta */
+    .hud-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 20px;
+    }
+
+    .interactive-element {
+      pointer-events: auto;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-panel);
+      border-radius: 12px;
+      padding: 12px 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      stroke: var(--accent-cyan);
+    }
+
+    .brand-text h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+    }
+
+    .top-metrics {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .metric-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .metric-label {
+      color: var(--text-dim);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .metric-value {
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    .actions-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    button.btn-control {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-panel);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    button.btn-control:hover {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: var(--accent-cyan);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    button.btn-control.active {
+      background: var(--accent-cyan);
+      color: #05070c;
+      border-color: var(--accent-cyan);
+      font-weight: 700;
+    }
+
+    /* Centro e Paineis laterais */
+    .hud-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 16px;
+    }
+
+    .panel-dock {
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-panel);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 6px;
+    }
+
+    .thought-injector {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .thought-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-panel);
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: #ffffff;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .thought-input:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+    }
+
+    .thought-input::placeholder {
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    .range-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .range-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    /* Log de Estratos e Mutação */
+    .strata-feed {
+      height: 140px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .strata-feed::-webkit-scrollbar {
+      width: 4px;
+    }
+    .strata-feed::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    .strata-item {
+      padding: 4px 6px;
+      border-left: 2px solid var(--accent-cyan);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 0 4px 4px 0;
+      color: var(--text-dim);
+      line-height: 1.4;
+    }
+
+    .strata-item span {
+      color: var(--accent-green);
+    }
+
+    /* Barra Inferior com Guia e Modo Interativo */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-panel);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .mode-indicators {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .mode-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-dim);
+    }
+
+    .mode-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 6px var(--accent-cyan);
+    }
+
+    .dna-code-display {
+      color: var(--accent-magenta);
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+
+    svg.icon {
+      width: 14px;
+      height: 14px;
+      stroke-width: 2;
+      stroke: currentColor;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Canvas Principal -->
+  <canvas id="viewport"></canvas>
+
+  <!-- Camada HUD Interativa -->
+  <div class="hud-layer">
+    <!-- Topo -->
+    <header class="top-bar interactive-element">
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 3v6"/>
+          <path d="M12 15v6"/>
+          <path d="M3 12h6"/>
+          <path d="M15 12h6"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <div class="brand-text">
+          <h1>NEUROTERRARIUM</h1>
+          <p>ECOSSISTEMA BIOCIBERNÉTICO GENERATIVO &bull; PROTOCOLO V1.0</p>
+        </div>
+      </div>
+
+      <div class="top-metrics">
+        <div class="metric-chip">
+          <span class="metric-label">Espécimes Vivas</span>
+          <span class="metric-value" id="specimen-count">0</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Densidade Sonora</span>
+          <span class="metric-value" id="audio-nodes">0 Hz</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Gerações</span>
+          <span class="metric-value" id="generation-count">1</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Entropia</span>
+          <span class="metric-value" id="entropy-rate">0.042</span>
+        </div>
+      </div>
+
+      <div class="actions-group">
+        <button class="btn-control" id="btn-sound">
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          Áudio: Desativado
+        </button>
+        <button class="btn-control" id="btn-pulse">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+          Pulso de Gravidade
+        </button>
+        <button class="btn-control" id="btn-clear">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          Purificar
+        </button>
+      </div>
+    </header>
+
+    <!-- Centro / Lateral -->
+    <main class="hud-main">
+      <div class="panel-dock interactive-element">
+        <!-- Injetor de Pensamentos -->
+        <div class="card">
+          <div class="card-title">
+            <span>Injetor de Pensamento</span>
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="m10 15 5-3-5-3v6z"></path></svg>
+          </div>
+          <div class="thought-injector">
+            <input type="text" id="thought-input" class="thought-input" placeholder="Digite uma ideia para gerar vida..." maxlength="42" autocomplete="off" />
+            <button class="btn-control" id="btn-inject" style="width: 100%; justify-content: center;">
+              Cristalizar Forma de Vida
+            </button>
+          </div>
+          <div class="range-group">
+            <div class="range-label">
+              <span>Fluidez do Vácuo (Viscosidade)</span>
+              <span id="viscosity-val">0.97</span>
+            </div>
+            <input type="range" id="viscosity-slider" min="0.85" max="0.99" step="0.01" value="0.97">
+          </div>
+          <div class="range-group">
+            <div class="range-label">
+              <span>Ressonância Magnética</span>
+              <span id="magnetic-val">1.2</span>
+            </div>
+            <input type="range" id="magnetic-slider" min="0.2" max="3.0" step="0.1" value="1.2">
+          </div>
+        </div>
+
+        <!-- Registro de Fósseis e Estratos -->
+        <div class="card">
+          <div class="card-title">
+            <span>Estratigrafia Bioacústica</span>
+            <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          </div>
+          <div class="strata-feed" id="strata-feed">
+            <div class="strata-item">Ecossistema inicializado em repouso quântico.</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="bottom-bar interactive-element">
+      <div class="mode-indicators">
+        <div class="mode-item">
+          <div class="mode-dot"></div>
+          <span>Clique/Arraste: Força de atração gravitacional</span>
+        </div>
+        <div class="mode-item">
+          <div class="mode-dot" style="background: var(--accent-magenta); box-shadow: 0 0 6px var(--accent-magenta);"></div>
+          <span>Colisão: Troca de DNA e síntese pentatônica</span>
+        </div>
+      </div>
+      <div class="dna-code-display" id="dna-monitor">
+        DNA: ATGC-SINTESE-AGUARDANDO
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    /* ========================================================
+       NEUROTERRARIUM - MOTOR BIOCIBERNÉTICO GENERATIVO
+       1. Motor Físico de Corpos Moles e Tentáculos
+       2. Motor Acústico Procedural (Web Audio API Modular)
+       3. Sistema Genético e Transcrição de Pensamentos
+       ======================================================== */
+
+    // --- CONFIGURAÇÃO DO CANVAS ---
+    const canvas = document.getElementById('viewport');
+    const ctx = canvas.getContext('2d');
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    // --- PARÂMETROS GLOBAIS ---
+    let viscosity = 0.97;
+    let magneticPull = 1.2;
+    let generation = 1;
+    let audioActive = false;
+
+    // --- MOTOR DE ÁUDIO WEB SYNTHESIZER PROCEDURAL ---
+    class BioAcousticEngine {
+      constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.reverbConvolver = null;
+        this.filter = null;
+        this.pentatonicScale = [130.81, 146.83, 164.81, 196.00, 220.00, 261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00];
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+
+        this.filter = this.ctx.createBiquadFilter();
+        this.filter.type = 'lowpass';
+        this.filter.frequency.setValueAtTime(1400, this.ctx.currentTime);
+        this.filter.Q.setValueAtTime(3.5, this.ctx.currentTime);
+
+        this.masterGain.connect(this.filter);
+        this.filter.connect(this.ctx.destination);
+
+        // Zumbido Biológico de Fundo (Drone Atmosférico)
+        this.startBioDrone();
+      }
+
+      startBioDrone() {
+        const osc = this.ctx.createOscillator();
+        const droneGain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(55, this.ctx.currentTime); // A1 note
+        droneGain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+
+        // LFO sutil para modular o drone
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        lfo.frequency.setValueAtTime(0.12, this.ctx.currentTime);
+        lfoGain.gain.setValueAtTime(8, this.ctx.currentTime);
+        lfo.connect(osc.frequency);
+        lfo.start();
+
+        osc.connect(droneGain);
+        droneGain.connect(this.masterGain);
+        osc.start();
+      }
+
+      playPluck(frequency, panValue = 0, timbre = 'sine') {
+        if (!this.ctx || !audioActive) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+
+        osc.type = timbre;
+        osc.frequency.setValueAtTime(frequency, this.ctx.currentTime);
+
+        // Envelope Percursivo Suave
+        const t = this.ctx.currentTime;
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+
+        if (panner) {
+          panner.pan.setValueAtTime(Math.max(-1, Math.min(1, panValue)), t);
+          osc.connect(gain);
+          gain.connect(panner);
+          panner.connect(this.masterGain);
+        } else {
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+        }
+
+        osc.start(t);
+        osc.stop(t + 1.25);
+      }
+
+      playGravitationalBurst() {
+        if (!this.ctx || !audioActive) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.6);
+        g.gain.setValueAtTime(0.3, now);
+        g.gain.linearRampToValueAtTime(0.001, now + 0.6);
+
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.65);
+      }
+    }
+
+    const soundEngine = new BioAcousticEngine();
+
+    // --- GENÉTICA E TRANSLAÇÃO DE PENSAMENTOS ---
+    function hashThought(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+
+    function createGenomeFromThought(text) {
+      const h = hashThought(text || "Vida Primordial " + Math.random());
+      const r1 = (h % 360);
+      const r2 = ((h >> 4) % 10) + 4;
+      const r3 = ((h >> 8) % 8) + 6;
+      const r4 = 0.5 + ((h >> 12) % 15) / 10;
+      return {
+        label: text || "BioEntidade-" + (h % 999),
+        hue: r1,
+        nodesCount: Math.min(r2, 12),
+        tentaclesCount: Math.min(r3, 8),
+        speed: r4,
+        frequency: soundEngine.pentatonicScale[h % soundEngine.pentatonicScale.length]
+      };
+    }
+
+    // --- CLASSE DO ORGANISMO SINÁPTICO (VERLET & TENTÁCULOS) ---
+    class BioCreature {
+      constructor(x, y, genome) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = (Math.random() - 0.5) * 2;
+        this.genome = genome;
+        this.radius = 12 + genome.nodesCount * 1.5;
+        this.age = 0;
+        this.maxAge = 1800 + Math.random() * 2400; // Vida útil
+        this.energy = 100;
+        this.phase = Math.random() * Math.PI * 2;
+        this.dead = false;
+
+        // Construção dos Tentáculos (Cadeias de cinemática inversa/Verlet)
+        this.tentacles = [];
+        for (let i = 0; i < genome.tentaclesCount; i++) {
+          const tentacle = [];
+          const segCount = 6 + (i % 4);
+          for (let s = 0; s < segCount; s++) {
+            tentacle.push({ x: this.x, y: this.y, oldX: this.x, oldY: this.y });
+          }
+          this.tentacles.push(tentacle);
+        }
+      }
+
+      update(pointer, organisms) {
+        this.age++;
+        this.phase += 0.04 * this.genome.speed;
+
+        // Movimento orgânico ondulatório
+        const wanderAngle = Math.sin(this.phase) * 1.2;
+        this.vx += Math.cos(this.phase) * 0.12 * this.genome.speed;
+        this.vy += Math.sin(this.phase) * 0.12 * this.genome.speed;
+
+        // Atração magnética do ponteiro
+        if (pointer.active) {
+          const dx = pointer.x - this.x;
+          const dy = pointer.y - this.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 10 && dist < 500) {
+            const force = (500 - dist) / 500 * (0.4 * magneticPull);
+            this.vx += (dx / dist) * force;
+            this.vy += (dy / dist) * force;
+          }
+        }
+
+        // Fricção de fluido
+        this.vx *= viscosity;
+        this.vy *= viscosity;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Limites de Borda com Reflexão Suave
+        const pad = this.radius;
+        if (this.x < pad) { this.x = pad; this.vx *= -1; }
+        if (this.x > width - pad) { this.x = width - pad; this.vx *= -1; }
+        if (this.y < pad) { this.y = pad; this.vy *= -1; }
+        if (this.y > height - pad) { this.y = height - pad; this.vy *= -1; }
+
+        // Atualização cinemática dos Tentáculos
+        const angleStep = (Math.PI * 2) / this.tentacles.length;
+        this.tentacles.forEach((tentacle, tIdx) => {
+          const baseAngle = angleStep * tIdx + Math.sin(this.phase + tIdx) * 0.3;
+          let anchorX = this.x + Math.cos(baseAngle) * this.radius * 0.7;
+          let anchorY = this.y + Math.sin(baseAngle) * this.radius * 0.7;
+
+          tentacle[0].x = anchorX;
+          tentacle[0].y = anchorY;
+
+          const segLen = 7 + Math.sin(this.phase + tIdx) * 2;
+          for (let i = 1; i < tentacle.length; i++) {
+            const p = tentacle[i];
+            const prev = tentacle[i - 1];
+
+            const dx = p.x - prev.x;
+            const dy = p.y - prev.y;
+            const dist = Math.hypot(dx, dy) || 1;
+            const targetX = prev.x + (dx / dist) * segLen;
+            const targetY = prev.y + (dy / dist) * segLen + Math.sin(this.phase + i * 0.5) * 1.2;
+
+            p.x += (targetX - p.x) * 0.35;
+            p.y += (targetY - p.y) * 0.35;
+          }
+        });
+
+        // Verificação de Interações Sinápticas (Comunicação entre espécies)
+        for (let other of organisms) {
+          if (other === this) continue;
+          const dx = other.x - this.x;
+          const dy = other.y - this.y;
+          const dist = Math.hypot(dx, dy);
+
+          // Comunicação por raio bioelétrico
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.strokeStyle = `hsla(${this.genome.hue}, 80%, 65%, ${1 - dist / 120})`;
+            ctx.lineWidth = 0.8;
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(other.x, other.y);
+            ctx.stroke();
+
+            // Gatilho de síntese de som ao tocar
+            if (dist < (this.radius + other.radius) && Math.random() < 0.03) {
+              const pan = (this.x / width) * 2 - 1;
+              soundEngine.playPluck(this.genome.frequency, pan, 'triangle');
+            }
+          }
+        }
+
+        if (this.age > this.maxAge) {
+          this.dead = true;
+        }
+      }
+
+      draw() {
+        // Núcleo Bioluminescente
+        const alpha = Math.max(0.2, 1 - (this.age / this.maxAge) * 0.6);
+        const grad = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, this.radius * 1.6);
+        grad.addColorStop(0, `hsla(${this.genome.hue}, 100%, 75%, ${alpha})`);
+        grad.addColorStop(0.5, `hsla(${this.genome.hue}, 90%, 50%, ${alpha * 0.5})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * 1.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Membrana Celular com Pulsação
+        ctx.beginPath();
+        ctx.strokeStyle = `hsla(${this.genome.hue}, 100%, 70%, ${alpha * 0.9})`;
+        ctx.lineWidth = 1.8;
+        const nodeAngleStep = (Math.PI * 2) / this.genome.nodesCount;
+        for (let i = 0; i < this.genome.nodesCount; i++) {
+          const ang = i * nodeAngleStep;
+          const wave = Math.sin(this.phase * 2 + i) * 3;
+          const px = this.x + Math.cos(ang) * (this.radius + wave);
+          const py = this.y + Math.sin(ang) * (this.radius + wave);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // Desenhar Flagelos / Tentáculos
+        this.tentacles.forEach(tentacle => {
+          ctx.beginPath();
+          ctx.strokeStyle = `hsla(${this.genome.hue}, 80%, 60%, ${alpha * 0.6})`;
+          ctx.lineWidth = 1.2;
+          ctx.moveTo(tentacle[0].x, tentacle[0].y);
+          for (let i = 1; i < tentacle.length; i++) {
+            ctx.lineTo(tentacle[i].x, tentacle[i].y);
+          }
+          ctx.stroke();
+
+          // Ponto bioluminescente na ponta
+          const tip = tentacle[tentacle.length - 1];
+          ctx.beginPath();
+          ctx.fillStyle = `hsla(${this.genome.hue}, 100%, 85%, ${alpha})`;
+          ctx.arc(tip.x, tip.y, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Identificador Genético Flutuante
+        ctx.font = '9px monospace';
+        ctx.fillStyle = `hsla(${this.genome.hue}, 70%, 80%, ${alpha * 0.7})`;
+        ctx.fillText(this.genome.label, this.x + this.radius + 6, this.y + 3);
+      }
+    }
+
+    // --- GERENCIADOR DO ECOSSISTEMA ---
+    const organisms = [];
+    const pointer = { x: width / 2, y: height / 2, active: false };
+
+    function logStrata(message, highlight = false) {
+      const feed = document.getElementById('strata-feed');
+      const item = document.createElement('div');
+      item.className = 'strata-item';
+      if (highlight) {
+        item.style.borderLeftColor = 'var(--accent-magenta)';
+      }
+      item.innerHTML = `<span>[${new Date().toLocaleTimeString()}]</span> ${message}`;
+      feed.prepend(item);
+      if (feed.children.length > 25) {
+        feed.removeChild(feed.lastChild);
+      }
+    }
+
+    function spawnOrganism(x, y, text) {
+      const genome = createGenomeFromThought(text);
+      const creature = new BioCreature(x, y, genome);
+      organisms.push(creature);
+      logStrata(`Nova linhagem gerada: <strong>${genome.label}</strong> (Hz: ${genome.frequency.toFixed(1)})`);
+
+      const dnaMonitor = document.getElementById('dna-monitor');
+      dnaMonitor.textContent = `DNA: MATRIZ-${genome.hue.toString(16).toUpperCase()}-${genome.nodesCount}N-${genome.tentaclesCount}T`;
+
+      if (audioActive) {
+        soundEngine.playPluck(genome.frequency, (x / width) * 2 - 1, 'sine');
+      }
+    }
+
+    // Inicialização do Bioma com 5 Criaturas Iniciais
+    function seedInitialBiome() {
+      const seeds = [
+        "Centelha Primitiva",
+        "Consciência Fluida",
+        "Harmonia Cibernética",
+        "Vórtice Neural",
+        "Pulso Quântico"
+      ];
+      seeds.forEach((seed, i) => {
+        const posX = width * 0.2 + (width * 0.6) * (i / (seeds.length - 1));
+        const posY = height * 0.3 + (Math.random() - 0.5) * 200;
+        spawnOrganism(posX, posY, seed);
+      });
+    }
+
+    // --- EVENTOS DO PONTEIRO E MOUSE ---
+    window.addEventListener('pointerdown', (e) => {
+      // Ignorar cliques diretos nos painéis HUD
+      if (e.target.closest('.interactive-element')) return;
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+      pointer.active = true;
+
+      if (audioActive) {
+        soundEngine.playPluck(440, (pointer.x / width) * 2 - 1, 'triangle');
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+    });
+
+    window.addEventListener('pointerup', () => {
+      pointer.active = false;
+    });
+
+    // Clique duplo para gerar criatura na coordenada
+    window.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.interactive-element')) return;
+      spawnOrganism(e.clientX, e.clientY, "Eco Espontâneo");
+    });
+
+    // --- CONTROLES DA INTERFACE ---
+    const btnSound = document.getElementById('btn-sound');
+    btnSound.addEventListener('click', () => {
+      soundEngine.init();
+      audioActive = !audioActive;
+      if (audioActive) {
+        btnSound.classList.add('active');
+        btnSound.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg> Áudio: Ativo`;
+        logStrata("Síntese bioacústica conectada ao canal estéreo.");
+      } else {
+        btnSound.classList.remove('active');
+        btnSound.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg> Áudio: Desativado`;
+        logStrata("Canal sonoro silenciado.");
+      }
+    });
+
+    const btnPulse = document.getElementById('btn-pulse');
+    btnPulse.addEventListener('click', () => {
+      soundEngine.playGravitationalBurst();
+      logStrata("Onda de choque gravitacional deflagrada.", true);
+      organisms.forEach(org => {
+        const dx = org.x - width / 2;
+        const dy = org.y - height / 2;
+        const dist = Math.hypot(dx, dy) || 1;
+        org.vx += (dx / dist) * 14;
+        org.vy += (dy / dist) * 14;
+      });
+    });
+
+    const btnClear = document.getElementById('btn-clear');
+    btnClear.addEventListener('click', () => {
+      const count = organisms.length;
+      organisms.length = 0;
+      logStrata(`Purificação concluída. ${count} linhagens extintas.`);
+    });
+
+    const thoughtInput = document.getElementById('thought-input');
+    const btnInject = document.getElementById('btn-inject');
+
+    function injectCurrentThought() {
+      const val = thoughtInput.value.trim();
+      if (!val) return;
+      const x = width / 2 + (Math.random() - 0.5) * 300;
+      const y = height / 2 + (Math.random() - 0.5) * 200;
+      spawnOrganism(x, y, val);
+      thoughtInput.value = '';
+    }
+
+    btnInject.addEventListener('click', injectCurrentThought);
+    thoughtInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') injectCurrentThought();
+    });
+
+    // Sliders de controle
+    const viscositySlider = document.getElementById('viscosity-slider');
+    const viscosityVal = document.getElementById('viscosity-val');
+    viscositySlider.addEventListener('input', (e) => {
+      viscosity = parseFloat(e.target.value);
+      viscosityVal.textContent = viscosity.toFixed(2);
+    });
+
+    const magneticSlider = document.getElementById('magnetic-slider');
+    const magneticVal = document.getElementById('magnetic-val');
+    magneticSlider.addEventListener('input', (e) => {
+      magneticPull = parseFloat(e.target.value);
+      magneticVal.textContent = magneticPull.toFixed(1);
+    });
+
+    // --- REPRODUÇÃO E REGENERAÇÃO ESPONTÂNEA ---
+    setInterval(() => {
+      // Se houver menos de 3 organismos, restaura a biodiversidade
+      if (organisms.length < 3) {
+        generation++;
+        document.getElementById('generation-count').textContent = generation;
+        const names = ["Cromossomo Éter", "Fóton Biológico", "Célula Entrópica", "Nódulo de Névoa"];
+        const chosen = names[Math.floor(Math.random() * names.length)];
+        spawnOrganism(Math.random() * width, Math.random() * height, chosen);
+      }
+    }, 4000);
+
+    // --- LOOP PRINCIPAL DE RENDERIZAÇÃO (60 FPS) ---
+    function loop() {
+      // Limpeza com rastro suave para sensação de luminescência e profundidade aquática
+      ctx.fillStyle = 'rgba(5, 7, 12, 0.28)';
+      ctx.fillRect(0, 0, width, height);
+
+      // Malha de Fundo Bioquântica
+      ctx.strokeStyle = 'rgba(64, 128, 255, 0.02)';
+      ctx.lineWidth = 1;
+      const step = 80;
+      for (let x = 0; x < width; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      // Campo de Atração do Ponteiro
+      if (pointer.active) {
+        ctx.beginPath();
+        ctx.arc(pointer.x, pointer.y, 45, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Atualização dos Organismos
+      for (let i = organisms.length - 1; i >= 0; i--) {
+        const org = organisms[i];
+        org.update(pointer, organisms);
+        org.draw();
+
+        if (org.dead) {
+          logStrata(`Linhagem fossilizada: ${org.genome.label}`);
+          organisms.splice(i, 1);
+        }
+      }
+
+      // Atualização de Métricas do HUD
+      document.getElementById('specimen-count').textContent = organisms.length;
+      if (organisms.length > 0) {
+        const avgFreq = organisms.reduce((acc, o) => acc + o.genome.frequency, 0) / organisms.length;
+        document.getElementById('audio-nodes').textContent = `${avgFreq.toFixed(0)} Hz`;
+      } else {
+        document.getElementById('audio-nodes').textContent = '0 Hz';
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    // Inicialização
+    seedInitialBiome();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
